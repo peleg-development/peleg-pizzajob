@@ -1,9 +1,5 @@
 fx_version 'cerulean'
 
-shared_script "@SecureServe/src/module/module.lua"
-shared_script "@SecureServe/src/module/module.js"
-file "@SecureServe/secureserve.key"
-
 games { 'gta5' }
 lua54 'yes'
 name         'peleg-pizzajob'
