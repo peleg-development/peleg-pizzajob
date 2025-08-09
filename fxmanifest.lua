@@ -32,8 +32,7 @@ server_scripts {
 }
 
 dependencies {
-    'ox_lib',
-    'qb-core'
+    'ox_lib'
 }
 
 files {

@@ -114,13 +114,8 @@ function JobModule.completeDelivery()
     JobModule.stopDeliveryTimer()
     VehicleModule.removeDeliveryBlip()
     
-    -- Calculate payout
-    local payout = Utils.calculatePayout(distance, playerLevel, deliveryCount)
+    TriggerServerEvent('peleg-pizzajob:server:completeDelivery', deliveryCount, deliveryTime)
     
-    -- Send completion to server
-    TriggerServerEvent('peleg-pizzajob:server:completeDelivery', deliveryCount, payout, deliveryTime)
-    
-    -- Start next delivery after delay
     SetTimeout(3000, function()
         if isOnDuty then
             JobModule.startNewDelivery()

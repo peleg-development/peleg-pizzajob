@@ -50,15 +50,17 @@ if Config.XP.Command then
 end
 
 -- Server-authoritative delivery picker
----@diagnostic disable-next-line: undefined-global
-lib.callback.register('peleg-pizzajob:server:newDelivery', function(source)
-    local locs = Config.JobLocs or {}
-    if #locs == 0 then return nil end
-    local idx = math.random(#locs)
-    local coords = locs[idx]
-    ActiveDeliveries[source] = { coords = coords, startedAt = GetGameTimer() }
-    return coords
-end)
+ ---@diagnostic disable-next-line: undefined-global
+ lib.callback.register('peleg-pizzajob:server:newDelivery', function(source)
+     local locs = Config.JobLocs or {}
+     if #locs == 0 then return nil end
+     local idx = math.random(#locs)
+     local coords = locs[idx]
+     local ped = GetPlayerPed(source)
+     local startCoords = (ped and ped ~= 0) and GetEntityCoords(ped) or nil
+     ActiveDeliveries[source] = { coords = coords, startedAt = GetGameTimer(), startCoords = startCoords }
+     return coords
+ end)
 
 RegisterNetEvent('peleg-pizzajob:server:givePizzaBox', function()
     local src = source
@@ -78,7 +80,7 @@ RegisterNetEvent('peleg-pizzajob:server:givePizzaBox', function()
     end
 end)
 
-RegisterNetEvent('peleg-pizzajob:server:completeDelivery', function(deliveryCount, payoutAmount, deliveryTime)
+RegisterNetEvent('peleg-pizzajob:server:completeDelivery', function(deliveryCount, deliveryTime)
     local src = source
     local data = ActiveDeliveries[src]
     if not data then
@@ -104,8 +106,16 @@ RegisterNetEvent('peleg-pizzajob:server:completeDelivery', function(deliveryCoun
         local exp = ExperienceModule.getDeliveryXP(src)
         ExperienceModule.updatePlayerXP(src, exp)
     end
-    RewardsModule.giveMoney(src, payoutAmount, Config.PayCheckType)
-    Utils.notify(src, _L('received_delivery_payment', payoutAmount), 'success')
+    local payoutDistance = 0.0
+    if data.startCoords then
+        payoutDistance = Utils.getDistance(data.startCoords, dc)
+    else
+        payoutDistance = Utils.getDistance(pc, dc)
+    end
+    local level = ExperienceModule.getPlayerLevel(src)
+    local payout = RewardsModule.calculateDeliveryPayout(payoutDistance, level, deliveryCount)
+    RewardsModule.giveMoney(src, payout, Config.PayCheckType)
+    Utils.notify(src, _L('received_delivery_payment', payout), 'success')
     ActiveDeliveries[src] = nil
 end)
 
