@@ -1,5 +1,8 @@
 # 🚀 Installation Guide
 
+## Preview
+https://youtu.be/zxPgNYHyVh4
+
 ## Quick Start
 
 1. **Download** the resource to your server's `resources` folder
