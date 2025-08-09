@@ -7,6 +7,7 @@ local Utils = require('shared.utils')
 
 -- Active delivery registry for basic verification
 local ActiveDeliveries = {}
+local DeliveryCounts = {}
 ---@diagnostic disable-next-line: undefined-global
 lib.callback.register('peleg-PizzaJob:CallBacks:getexp', function(source)
     local xp = PlayerModule.getPlayerMetadata(source, Config.XP.MetaDataName) or 0
@@ -59,6 +60,9 @@ end
      local ped = GetPlayerPed(source)
      local startCoords = (ped and ped ~= 0) and GetEntityCoords(ped) or nil
      ActiveDeliveries[source] = { coords = coords, startedAt = GetGameTimer(), startCoords = startCoords }
+    if DeliveryCounts[source] == nil then
+        DeliveryCounts[source] = 0
+    end
      return coords
  end)
 
@@ -80,7 +84,7 @@ RegisterNetEvent('peleg-pizzajob:server:givePizzaBox', function()
     end
 end)
 
-RegisterNetEvent('peleg-pizzajob:server:completeDelivery', function(deliveryCount, deliveryTime)
+RegisterNetEvent('peleg-pizzajob:server:completeDelivery', function(deliveryTime)
     local src = source
     local data = ActiveDeliveries[src]
     if not data then
@@ -113,15 +117,20 @@ RegisterNetEvent('peleg-pizzajob:server:completeDelivery', function(deliveryCoun
         payoutDistance = Utils.getDistance(pc, dc)
     end
     local level = ExperienceModule.getPlayerLevel(src)
-    local payout = RewardsModule.calculateDeliveryPayout(payoutDistance, level, deliveryCount)
+    local computedDeliveryCount = (DeliveryCounts[src] or 0) + 1
+    local payout = RewardsModule.calculateDeliveryPayout(payoutDistance, level, computedDeliveryCount)
     RewardsModule.giveMoney(src, payout, Config.PayCheckType)
     Utils.notify(src, _L('received_delivery_payment', payout), 'success')
+    DeliveryCounts[src] = computedDeliveryCount
     ActiveDeliveries[src] = nil
 end)
 
 RegisterNetEvent('peleg-pizzajob:server:failDelivery', function()
     local src = source
     RewardsModule.processDeliveryFailure(src)
+    if Config.ReetDeliveryCount then
+        DeliveryCounts[src] = 0
+    end
 end)
 
 RegisterNetEvent('peleg-pizzajobL:server:Fail', function()
@@ -140,6 +149,9 @@ RegisterNetEvent("peleg-pizzajobL:server:Fail", function()
     if Config.TakeEXP then
         local newExp = ExperienceModule.removePlayerXP(src, Config.ExpTakeAmount)
         Utils.notify(src, _L('delivery_failed_xp', Config.ExpTakeAmount), 'error')
+    end
+    if Config.ReetDeliveryCount then
+        DeliveryCounts[src] = 0
     end
 end)
 

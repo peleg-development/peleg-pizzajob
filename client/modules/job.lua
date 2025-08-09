@@ -21,14 +21,12 @@ local deliveryStartTime = nil
 local playerLevel = 1
 local playerExp = 0
 
----Start pizza delivery job
 function JobModule.startJob(skipVehicleCheck)
     if isOnDuty then
         Utils.notify(Utils.locale('already_on_duty'), 'error')
         return
     end
     
-    -- VehicleModule will be passed from main.lua to avoid circular dependency
     if not skipVehicleCheck and (not VehicleModule or not VehicleModule.isInDeliveryVehicle()) then
         Utils.notify(Utils.locale('need_delivery_vehicle'), 'error')
         return
@@ -41,7 +39,6 @@ function JobModule.startJob(skipVehicleCheck)
     Utils.notify(Utils.locale('job_started'), 'success')
 end
 
----Stop pizza delivery job
 function JobModule.stopJob()
     if not isOnDuty then
         Utils.notify(Utils.locale('not_on_duty'), 'error')
@@ -55,10 +52,8 @@ function JobModule.stopJob()
     Utils.notify(Utils.locale('job_stopped'), 'inform')
 end
 
----Start new delivery
 function JobModule.startNewDelivery()
     if not isOnDuty then return end
-    -- ask server to authoritatively pick a delivery
     local deliveryLocation = lib.callback.await('peleg-pizzajob:server:newDelivery', false)
     if not deliveryLocation then return end
     currentDelivery = {
@@ -71,7 +66,6 @@ function JobModule.startNewDelivery()
         VehicleModule.createDeliveryBlip(deliveryLocation)
     end
     JobModule.startDeliveryTimer()
-    -- Add target/3D interaction at delivery spot: secure flow with progress bar + server check
     Utils.addTargetZone(deliveryLocation, {
         {
             icon = 'fa-solid fa-pizza-slice',
@@ -95,11 +89,8 @@ function JobModule.startNewDelivery()
             end
         }
     }, 'pizza_delivery_zone')
-    
-    -- silent start
 end
 
----Complete current delivery
 function JobModule.completeDelivery()
     if not currentDelivery or currentDelivery.completed then
         return
@@ -114,7 +105,7 @@ function JobModule.completeDelivery()
     JobModule.stopDeliveryTimer()
     VehicleModule.removeDeliveryBlip()
     
-    TriggerServerEvent('peleg-pizzajob:server:completeDelivery', deliveryCount, deliveryTime)
+    TriggerServerEvent('peleg-pizzajob:server:completeDelivery', deliveryTime)
     
     SetTimeout(3000, function()
         if isOnDuty then
@@ -136,14 +127,13 @@ function JobModule.cancelCurrentDelivery()
     end
 end
 
----Start delivery timer
 function JobModule.startDeliveryTimer()
     if deliveryTimer then
         JobModule.stopDeliveryTimer()
     end
     
     deliveryStartTime = GetGameTimer()
-    local timeLimit = Config.TimeLimitPerDelivery * 1000 -- Convert to milliseconds
+    local timeLimit = Config.TimeLimitPerDelivery * 1000 
     
     deliveryTimer = CreateThread(function()
         while currentDelivery and not currentDelivery.completed do
@@ -155,8 +145,7 @@ function JobModule.startDeliveryTimer()
                 break
             end
             
-            -- Update timer UI every second
-            if elapsed % 1000 < 16 then -- Roughly every second
+            if elapsed % 1000 < 16 then 
                 JobModule.updateTimerUI(remaining / 1000)
             end
             
@@ -173,7 +162,6 @@ function JobModule.stopDeliveryTimer()
     end
 end
 
----Fail current delivery
 function JobModule.failDelivery()
     if not currentDelivery then return end
     
@@ -181,12 +169,10 @@ function JobModule.failDelivery()
     JobModule.stopDeliveryTimer()
     VehicleModule.removeDeliveryBlip()
     
-    -- Notify server of failure
     TriggerServerEvent('peleg-pizzajob:server:failDelivery')
     
     Utils.notify(Utils.locale('delivery_failed'), 'error')
     
-    -- Start new delivery after delay
     SetTimeout(5000, function()
         if isOnDuty then
             JobModule.startNewDelivery()
